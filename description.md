@@ -48,3 +48,9 @@ npm start simple_ws_sender.js
 ```
 
 Then your simple corelink client server is talking to each other!
+
+
+To use the watch_and_send, make sure run
+```
+npm install chokidar
+```
