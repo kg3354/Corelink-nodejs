@@ -1,2 +1,3 @@
-confluent-kafka
-ffmpeg
+tifffile
+imageio
+numpy

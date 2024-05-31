@@ -9,6 +9,6 @@ spec:
       - name: nodejs-container
         image: registry.hsrn.nyu.edu/vip/corelink-examples/corelink-consumer:latest
         command: ["node"]
-        args: ["./receive_then_fiola.js"]
+        args: ["./receiver_fin.js"]
       restartPolicy: Never
   backoffLimit: 0

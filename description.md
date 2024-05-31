@@ -34,6 +34,7 @@ The simple_ws_receiver and simple_ws_sender provide a most simple example of how
 To run the simple example, run
 ```
 npm install corelink-client
+pip install tifffile
 ```
 
 and inside each directory, run

@@ -329,37 +329,37 @@ def run_pipeline(file_name):
 
     #%% save result
     if True:
-        # np.save(folder + './fiola_result', fio.estimates)
-        serialized_arr = pickle.dumps(fio.estimates)
-        # Setup basic logging
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        np.save(folder + './fiola_result', fio.estimates)
+        # serialized_arr = pickle.dumps(fio.estimates)
+        # # Setup basic logging
+        # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-        logging.info("Initializing Kafka producer...")
-        bootstrap_servers = os.getenv('KAFKA_BROKER_LIST', 'kafka-loadbalancer-controller-0.kafka-loadbalancer-controller-headless.fenton-neuroscience.svc.cluster.local:9092')
-        sasl_mechanism = os.getenv('KAFKA_SASL_MECHANISM', 'PLAINTEXT')
-        security_protocol = os.getenv('KAFKA_SECURITY_PROTOCOL', 'PLAINTEXT')  # Default to PLAINTEXT if not specified
+        # logging.info("Initializing Kafka producer...")
+        # bootstrap_servers = os.getenv('KAFKA_BROKER_LIST', 'kafka-loadbalancer-controller-0.kafka-loadbalancer-controller-headless.fenton-neuroscience.svc.cluster.local:9092')
+        # sasl_mechanism = os.getenv('KAFKA_SASL_MECHANISM', 'PLAINTEXT')
+        # security_protocol = os.getenv('KAFKA_SECURITY_PROTOCOL', 'PLAINTEXT')  # Default to PLAINTEXT if not specified
 
-        conf = {
-            'bootstrap.servers': bootstrap_servers,
-            'security.protocol': security_protocol,
-            'sasl.mechanisms': sasl_mechanism,
-        }
+        # conf = {
+        #     'bootstrap.servers': bootstrap_servers,
+        #     'security.protocol': security_protocol,
+        #     'sasl.mechanisms': sasl_mechanism,
+        # }
 
-        producer = Producer(**conf)
-        logging.info("Kafka producer initialized.")
+        # producer = Producer(**conf)
+        # logging.info("Kafka producer initialized.")
 
-        topic_name = os.getenv('KAFKA_TOPIC', 'fiola_output')  # Default to 'fiola_output' if not specified
+        # topic_name = os.getenv('KAFKA_TOPIC', 'fiola_output')  # Default to 'fiola_output' if not specified
 
-        def delivery_report(err, msg):
-            """Called once for each message produced to indicate delivery result.
-            Triggered by poll() or flush()."""
-            if err is not None:
-                logging.error('Message delivery failed: {}'.format(err))
-            else:
-                logging.info('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
+        # def delivery_report(err, msg):
+        #     """Called once for each message produced to indicate delivery result.
+        #     Triggered by poll() or flush()."""
+        #     if err is not None:
+        #         logging.error('Message delivery failed: {}'.format(err))
+        #     else:
+        #         logging.info('Message delivered to {} [{}]'.format(msg.topic(), msg.partition()))
 
-        # Produce message
-        producer.produce(topic_name, value=serialized_arr, callback=delivery_report)
-        producer.flush()
+        # # Produce message
+        # producer.produce(topic_name, value=serialized_arr, callback=delivery_report)
+        # producer.flush()
 
-        print("Result sent to topic fiola_output")
+        # print("Result sent to topic fiola_output")

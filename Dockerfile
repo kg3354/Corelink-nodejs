@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y curl && \
     apt-get install -y git && \
     pip install --upgrade pip && \
     pip install --upgrade setuptools six && \
-    apt-get install ffmpeg libsm6 libxext6 -y && \
+    apt-get install  libsm6 libxext6 -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -26,7 +26,8 @@ RUN npm install corelink-client
 
 # Copy the current directory contents into the container at /usr/src/app
 COPY fiola_pipeline.py .
-COPY receive_then_fiola.js .
+COPY image_process.py .
+COPY receiver_fin.js .
 COPY requirements.txt .
 
 # Install any needed packages specified in requirements.txt
@@ -44,4 +45,4 @@ RUN git clone https://github.com/flatironinstitute/CaImAn.git -b v1.9.13 && \
 RUN apt-get update && apt-get install -y telnet
 
 # The command to run the script, you'll overwrite this in Kubernetes deployment
-CMD ["node", "./receive_then_fiola.js"]
+CMD ["node", "./receiver_fin.js"]
