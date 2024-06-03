@@ -202,6 +202,14 @@ async function sendFile(filePath) {
   });
 }
 
+async function sendEndMessage() {
+  if (receiverActive) {
+    const endMessage = Buffer.from('FINISHED');
+    corelink.send(sender, endMessage);
+    console.log('End message sent.');
+  }
+}
+
 const run = async () => {
   try {
     await corelink.connect({ username, password }, config);
@@ -222,6 +230,7 @@ const run = async () => {
           await sendFile(`./${i}.avi`); // Await here to wait for each sendFile to complete
           currentFrameNumber++;
         }
+        await sendEndMessage(); // Send end message after all files are sent
       }
     });
   } catch (err) {
