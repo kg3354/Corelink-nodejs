@@ -354,7 +354,7 @@ const createTiffFromAviBuffers = (aviBuffer, outputPath) => {
       })
       .output('pipe:1')
       .outputFormat('rawvideo') // Use rawvideo as output format to avoid format issues
-      .pipe()
+      .pipe(new PassThrough())
       .on('data', (chunk) => {
         frameBuffers.push(chunk);
       });
