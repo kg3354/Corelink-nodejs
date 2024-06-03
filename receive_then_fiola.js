@@ -634,26 +634,32 @@ const run = async () => {
         console.log('Received FINISHED marker.');
         processFramesAndGenerateTiff();
       } else {
-        const frameNumber = (data.readUInt8(0) << 8) | data.readUInt8(1); // Combine two bytes to get the frame number
-        const sliceIndex = data[2];
-        const totalSlices = data[3];
-        const content = data.slice(4);
-        console.log(`Frame number ${frameNumber} and slice number ${sliceIndex}`);
-        
-        if (!fileParts[frameNumber]) {
-          fileParts[frameNumber] = new Array(totalSlices).fill(null);
-        }
+        try {
+          const frameNumber = (data.readUInt8(0) << 8) | data.readUInt8(1); // Combine two bytes to get the frame number
+          const sliceIndex = data[2];
+          const totalSlices = data[3];
+          const content = data.slice(4);
+          console.log(`Frame number ${frameNumber} and slice number ${sliceIndex}`);
+          
+          if (!fileParts[frameNumber]) {
+            fileParts[frameNumber] = new Array(totalSlices).fill(null);
+          }
 
-        fileParts[frameNumber][sliceIndex] = content;
+          fileParts[frameNumber][sliceIndex] = content;
 
-        // Check if all parts are received
-        if (fileParts[frameNumber].every(part => part !== null)) {
-          const fullFile = Buffer.concat(fileParts[frameNumber]);
-          console.log(`Frame ${frameNumber} reassembled.`);
+          // Check if all parts are received
+          if (fileParts[frameNumber].every(part => part !== null)) {
+            const fullFile = Buffer.concat(fileParts[frameNumber]);
+            console.log(`Frame ${frameNumber} reassembled.`);
 
-          // Store the reassembled frame
-          allFrames.push(fullFile);
-          frameCounter++;
+            // Store the reassembled frame
+            allFrames.push(fullFile);
+            frameCounter++;
+          }
+        } catch (error) {
+          console.error(`Error processing frame ${frameNumber}:`, error);
+          // Discard the current frame if any error occurs
+          delete fileParts[frameNumber];
         }
       }
     });
@@ -699,3 +705,4 @@ const sendBufferToPython = (buffer, tiffPath) => {
 };
 
 run();
+
