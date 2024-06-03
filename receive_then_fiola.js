@@ -241,7 +241,6 @@
 // };
 
 // run();
-
 const corelink = require('corelink-client');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -352,6 +351,7 @@ const extractFramesFromAvi = (aviBuffer) => {
         resolve(frames);
       })
       .output('pipe:1')
+      .outputFormat('png') // Explicitly specify the output format
       .pipe()
       .on('data', (chunk) => {
         frames.push(chunk);
@@ -376,4 +376,3 @@ const runFiolaPipeline = (tiffPath) => {
 };
 
 run();
-
