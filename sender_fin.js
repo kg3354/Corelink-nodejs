@@ -187,7 +187,8 @@ async function sendFile(filePath) {
     for (let i = 0; i < totalChunks; i++) {
       const chunk = fileBuffer.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       const frameNumberBuffer = Buffer.alloc(2);
-      frameNumberBuffer.writeUInt16BE(currentFrameNumber, 0);
+      frameNumberBuffer.writeUInt8(currentFrameNumber >> 8, 0); // First byte
+      frameNumberBuffer.writeUInt8(currentFrameNumber & 0xFF, 1); // Second byte
       const dataToSend = Buffer.concat([
         frameNumberBuffer, // Frame number (2 bytes)
         Buffer.from([i, totalChunks]), // Current chunk index and total chunks
@@ -239,4 +240,5 @@ const run = async () => {
 };
 
 run();
+
 
