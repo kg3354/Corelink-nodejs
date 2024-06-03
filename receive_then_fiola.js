@@ -113,6 +113,7 @@ const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const { PassThrough } = require('stream');
 const sharp = require('sharp');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -179,51 +180,48 @@ const run = async () => {
 };
 
 const processFramesAndGenerateTiff = async () => {
-  const outputDir = path.join(__dirname, 'frames');
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir);
-  }
-
-  // Save AVI files temporarily
-  allFrames.forEach((frameBuffer, index) => {
-    const aviPath = path.join(outputDir, `frame_${index}.avi`);
-    fs.writeFileSync(aviPath, frameBuffer);
-  });
-
-  // Extract frames using ffmpeg
-  const extractFrames = () => {
-    return new Promise((resolve, reject) => {
-      ffmpeg()
-        .input(path.join(outputDir, 'frame_%d.avi'))
-        .outputOptions('-vf', 'fps=1')
-        .save(path.join(outputDir, 'frame_%d.png'))
-        .on('end', resolve)
-        .on('error', reject);
-    });
-  };
-
   try {
-    await extractFrames();
-    const frames = fs.readdirSync(outputDir).filter(file => file.endsWith('.png')).map(file => fs.readFileSync(path.join(outputDir, file)));
-
+    const frames = await extractFramesFromAvi(Buffer.concat(allFrames));
+    
     // Create TIFF from extracted frames
     const tiffPath = path.join(__dirname, 'constructed_image.tiff');
-    await sharp(frames)
+    await sharp(Buffer.concat(frames))
       .toFormat('tiff')
       .toFile(tiffPath);
     console.log(`TIFF image saved at ${tiffPath}`);
-
-    // Clean up temporary files
-    frames.forEach((file, index) => {
-      fs.unlinkSync(path.join(outputDir, `frame_${index}.avi`));
-      fs.unlinkSync(path.join(outputDir, `frame_${index}.png`));
-    });
-    fs.rmdirSync(outputDir);
 
     runFiolaPipeline(tiffPath);
   } catch (error) {
     console.error('Error processing frames:', error);
   }
+};
+
+const extractFramesFromAvi = (aviBuffer) => {
+  return new Promise((resolve, reject) => {
+    const frames = [];
+    const passThrough = new PassThrough();
+    passThrough.end(aviBuffer);
+    
+    ffmpeg(passThrough)
+      .inputFormat('avi')
+      .outputOptions('-vf', 'fps=1')
+      .on('start', (cmd) => console.log(`Started ffmpeg with command: ${cmd}`))
+      .on('error', (err, stdout, stderr) => {
+        console.error('Error:', err);
+        console.error('ffmpeg stderr:', stderr);
+        reject(err);
+      })
+      .on('end', () => {
+        console.log('Finished processing with ffmpeg');
+        resolve(frames);
+      })
+      .output('pipe:1')
+      .format('image2pipe')
+      .pipe()
+      .on('data', (chunk) => {
+        frames.push(chunk);
+      });
+  });
 };
 
 const runFiolaPipeline = (tiffPath) => {
