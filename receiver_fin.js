@@ -325,10 +325,8 @@
 // //   });
 // // };
 
-// // run();
-const fs = require('fs');
-const corelink = require('corelink-client');
-
+// // run();const corelink = require('corelink-client');
+const { spawn } = require('child_process');
 const config = {
   ControlPort: 20012,
   ControlIP: 'corelink.hpc.nyu.edu',
@@ -339,63 +337,70 @@ const password = 'Testpassword';
 const workspace = 'Fenton';
 const protocol = 'ws';
 const datatype = 'distance';
-const CHUNK_SIZE = 4 * 1024; // 4KB chunk size
 
-corelink.debug = true;
-
-let receiverActive = false;
-let sender;
-let currentFrameNumber = 0;
-
-async function sendFile(filePath) {
-  return new Promise((resolve, reject) => {
-    const fileBuffer = fs.readFileSync(filePath);
-    const totalChunks = Math.ceil(fileBuffer.length / CHUNK_SIZE);
-
-    for (let i = 0; i < totalChunks; i++) {
-      const chunk = fileBuffer.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const frameNumberBuffer = Buffer.alloc(2);
-      frameNumberBuffer.writeUInt16BE(currentFrameNumber, 0);
-      const dataToSend = Buffer.concat([
-        frameNumberBuffer, // Frame number (2 bytes)
-        Buffer.from([i, totalChunks]), // Current chunk index and total chunks
-        chunk,
-      ]);
-      if (receiverActive) {
-        corelink.send(sender, dataToSend);
-        console.log('Chunk sent:', i, 'of frame', currentFrameNumber);
-      }
-    }
-    resolve(); // Resolve the promise once all chunks are sent
-  });
-}
+const fileParts = {};
 
 const run = async () => {
-  try {
-    await corelink.connect({ username, password }, config);
-    sender = await corelink.createSender({
+  if (await corelink.connect({ username, password }, config).catch((err) => { console.log(err) })) {
+    const receiver = await corelink.createReceiver({
       workspace,
       protocol,
       type: datatype,
-      metadata: { name: 'AVI File Sender' },
+      echo: true,
+      alert: true,
+    }).catch((err) => { console.log(err) });
+
+    corelink.on('receiver', async (data) => {
+      const options = { streamIDs: [data.streamID] };
+      await corelink.subscribe(options);
+      console.log('Receiver and sender connected, subscribing to data.');
     });
 
-    corelink.on('sender', async (data) => {
-      if (!!data.receiverID !== receiverActive) {
-        receiverActive = !!data.receiverID;
-        console.log(`Receiver ${data.receiverID} ${receiverActive ? 'connected' : 'disconnected'}.`);
+    corelink.on('data', (streamID, data) => {
+      const frameNumber = data.readUInt16BE(0); // Read 2 bytes for the frame number
+      const sliceIndex = data[2];
+      const totalSlices = data[3];
+      const content = data.slice(4);
+      console.log(`Frame number ${frameNumber} and slice number ${sliceIndex}`);
+      
+      if (!fileParts[frameNumber]) {
+        fileParts[frameNumber] = new Array(totalSlices).fill(null);
       }
-      if (receiverActive) {
-        for (let i = 0; i < 244; i++) {
-          await sendFile(`./${i}.avi`); // Await here to wait for each sendFile to complete
-          currentFrameNumber++;
-        }
+
+      fileParts[frameNumber][sliceIndex] = content;
+
+      // Check if all parts are received
+      if (fileParts[frameNumber].every(part => part !== null)) {
+        const fullFile = Buffer.concat(fileParts[frameNumber]);
+        console.log(`Frame ${frameNumber} reassembled.`);
+
+        // Send the reassembled frame to Python
+        sendFrameToPython(fullFile);
+        
+        // Clean up
+        delete fileParts[frameNumber];
       }
     });
-  } catch (err) {
-    console.error('Error:', err);
   }
 };
 
-run();
+const sendFrameToPython = (frame) => {
+  const pythonProcess = spawn('python', ['image_process.py']);
 
+  pythonProcess.stdin.write(frame);
+  pythonProcess.stdin.end();
+
+  pythonProcess.stdout.on('data', (data) => {
+    console.log(`Python output: ${data}`);
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`Python error: ${data}`);
+  });
+
+  pythonProcess.on('close', (code) => {
+    console.log(`Python script finished with code ${code}`);
+  });
+};
+
+run();
