@@ -317,7 +317,7 @@ const run = async () => {
 const processFramesAndGenerateTiff = async () => {
   try {
     const tiffPath = path.join(__dirname, 'constructed_image.tiff');
-    await createTiffFromAviBuffers(allFrames, tiffPath);
+    await createTiffFromAviBuffers(Buffer.concat(allFrames), tiffPath);
     console.log(`TIFF image saved at ${tiffPath}`);
     runFiolaPipeline(tiffPath);
   } catch (error) {
@@ -325,13 +325,12 @@ const processFramesAndGenerateTiff = async () => {
   }
 };
 
-const createTiffFromAviBuffers = (buffers, outputPath) => {
+const createTiffFromAviBuffers = (aviBuffer, outputPath) => {
   return new Promise((resolve, reject) => {
-    const passThrough = new PassThrough();
-    buffers.forEach(buffer => passThrough.write(buffer));
-    passThrough.end();
-
     const frameBuffers = [];
+    const passThrough = new PassThrough();
+    passThrough.end(aviBuffer);
+
     ffmpeg(passThrough)
       .inputFormat('avi')
       .outputOptions('-vf', 'fps=1')
@@ -354,6 +353,7 @@ const createTiffFromAviBuffers = (buffers, outputPath) => {
         }
       })
       .output('pipe:1')
+      .outputFormat('rawvideo') // Use rawvideo as output format to avoid format issues
       .pipe()
       .on('data', (chunk) => {
         frameBuffers.push(chunk);
