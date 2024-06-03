@@ -104,11 +104,18 @@
 //   });
 // };
 
-// run();const corelink = require('corelink-client');
+// run();
+
+
+const corelink = require('corelink-client');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const sharp = require('sharp');
+ffmpeg.setFfmpegPath(ffmpegPath);
+
 const config = {
   ControlPort: 20012,
   ControlIP: 'corelink.hpc.nyu.edu',
@@ -143,7 +150,7 @@ const run = async () => {
     corelink.on('data', (streamID, data) => {
       if (data.toString() === 'FINISHED') {
         console.log('Received FINISHED marker.');
-        generateTiffAndRunPipeline();
+        processFramesAndGenerateTiff();
       } else {
         const frameNumber = (data.readUInt8(0) << 8) | data.readUInt8(1); // Combine two bytes to get the frame number
         const sliceIndex = data[2];
@@ -171,16 +178,52 @@ const run = async () => {
   }
 };
 
-const generateTiffAndRunPipeline = async () => {
-  const tiffBuffer = await sharp(Buffer.concat(allFrames))
-    .toFormat('tiff')
-    .toBuffer();
-  
-  const tiffPath = path.join(__dirname, 'constructed_image.tiff');
-  fs.writeFileSync(tiffPath, tiffBuffer);
-  console.log(`TIFF image saved at ${tiffPath}`);
+const processFramesAndGenerateTiff = async () => {
+  const outputDir = path.join(__dirname, 'frames');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir);
+  }
 
-  runFiolaPipeline(tiffPath);
+  // Save AVI files temporarily
+  allFrames.forEach((frameBuffer, index) => {
+    const aviPath = path.join(outputDir, `frame_${index}.avi`);
+    fs.writeFileSync(aviPath, frameBuffer);
+  });
+
+  // Extract frames using ffmpeg
+  const extractFrames = () => {
+    return new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(path.join(outputDir, 'frame_%d.avi'))
+        .outputOptions('-vf', 'fps=1')
+        .save(path.join(outputDir, 'frame_%d.png'))
+        .on('end', resolve)
+        .on('error', reject);
+    });
+  };
+
+  try {
+    await extractFrames();
+    const frames = fs.readdirSync(outputDir).filter(file => file.endsWith('.png')).map(file => fs.readFileSync(path.join(outputDir, file)));
+
+    // Create TIFF from extracted frames
+    const tiffPath = path.join(__dirname, 'constructed_image.tiff');
+    await sharp(frames)
+      .toFormat('tiff')
+      .toFile(tiffPath);
+    console.log(`TIFF image saved at ${tiffPath}`);
+
+    // Clean up temporary files
+    frames.forEach((file, index) => {
+      fs.unlinkSync(path.join(outputDir, `frame_${index}.avi`));
+      fs.unlinkSync(path.join(outputDir, `frame_${index}.png`));
+    });
+    fs.rmdirSync(outputDir);
+
+    runFiolaPipeline(tiffPath);
+  } catch (error) {
+    console.error('Error processing frames:', error);
+  }
 };
 
 const runFiolaPipeline = (tiffPath) => {
