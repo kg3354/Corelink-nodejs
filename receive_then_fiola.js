@@ -241,6 +241,7 @@
 // };
 
 // run();
+
 const corelink = require('corelink-client');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -315,27 +316,22 @@ const run = async () => {
 
 const processFramesAndGenerateTiff = async () => {
   try {
-    const frames = await extractFramesFromAvi(Buffer.concat(allFrames));
-    
-    // Create TIFF from extracted frames
     const tiffPath = path.join(__dirname, 'constructed_image.tiff');
-    await sharp(Buffer.concat(frames))
-      .toFormat('tiff')
-      .toFile(tiffPath);
+    await createTiffFromAviBuffers(allFrames, tiffPath);
     console.log(`TIFF image saved at ${tiffPath}`);
-
     runFiolaPipeline(tiffPath);
   } catch (error) {
     console.error('Error processing frames:', error);
   }
 };
 
-const extractFramesFromAvi = (aviBuffer) => {
+const createTiffFromAviBuffers = (buffers, outputPath) => {
   return new Promise((resolve, reject) => {
-    const frames = [];
     const passThrough = new PassThrough();
-    passThrough.end(aviBuffer);
-    
+    buffers.forEach(buffer => passThrough.write(buffer));
+    passThrough.end();
+
+    const frameBuffers = [];
     ffmpeg(passThrough)
       .inputFormat('avi')
       .outputOptions('-vf', 'fps=1')
@@ -346,15 +342,21 @@ const extractFramesFromAvi = (aviBuffer) => {
         console.error('ffmpeg stderr:', stderr);
         reject(err);
       })
-      .on('end', () => {
+      .on('end', async () => {
         console.log('Finished processing with ffmpeg');
-        resolve(frames);
+        try {
+          await sharp(Buffer.concat(frameBuffers))
+            .toFormat('tiff')
+            .toFile(outputPath);
+          resolve();
+        } catch (sharpError) {
+          reject(sharpError);
+        }
       })
       .output('pipe:1')
-      .outputFormat('png') // Explicitly specify the output format
       .pipe()
       .on('data', (chunk) => {
-        frames.push(chunk);
+        frameBuffers.push(chunk);
       });
   });
 };
