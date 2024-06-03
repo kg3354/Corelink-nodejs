@@ -104,8 +104,7 @@
 //   });
 // };
 
-// run();
-const corelink = require('corelink-client');
+// run();const corelink = require('corelink-client');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -146,7 +145,7 @@ const run = async () => {
         console.log('Received FINISHED marker.');
         generateTiffAndRunPipeline();
       } else {
-        const frameNumber = data.readUInt16BE(0); // Read 2 bytes for the frame number
+        const frameNumber = (data.readUInt8(0) << 8) | data.readUInt8(1); // Combine two bytes to get the frame number
         const sliceIndex = data[2];
         const totalSlices = data[3];
         const content = data.slice(4);
