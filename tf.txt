@@ -1,0 +1,30 @@
+Started ffmpeg with command: ffmpeg -f avi -i pipe:0 -vf fps=1 -f image2pipe pipe:1 pipe:1
+Error: Error: ffmpeg exited with code 1: pipe:1: Invalid argument
+
+    at ChildProcess.<anonymous> (C:\Users\Research\Desktop\Corelink-nodejs\node_modules\fluent-ffmpeg\lib\processor.js:180:22)
+    at ChildProcess.emit (node:events:519:28)
+    at ChildProcess._handle.onexit (node:internal/child_process:294:12)
+ffmpeg stderr: ffmpeg version N-92722-gf22fcd4483 Copyright (c) 2000-2018 the FFmpeg developers
+  built with gcc 8.2.1 (GCC) 20181201
+  configuration: --enable-gpl --enable-version3 --enable-sdl2 --enable-fontconfig --enable-gnutls --enable-iconv --enable-libass --enable-libbluray --enable-libfreetype --enable-libmp3lame --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libtheora --enable-libtwolame --enable-libvpx --enable-libwavpack --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxml2 --enable-libzimg --enable-lzma --enable-zlib --enable-gmp --enable-libvidstab --enable-libvorbis --enable-libvo-amrwbenc --enable-libmysofa --enable-libspeex --enable-libxvid --enable-libaom --enable-libmfx --enable-amf --enable-ffnvcodec --enable-cuvid --enable-d3d11va --enable-nvenc --enable-nvdec --enable-dxva2 --enable-avisynth --enable-libopenmpt
+  libavutil      56. 24.101 / 56. 24.101
+  libavcodec     58. 42.102 / 58. 42.102
+  libavformat    58. 24.101 / 58. 24.101
+  libavdevice    58.  6.101 / 58.  6.101
+  libavfilter     7. 46.101 /  7. 46.101
+  libswscale      5.  4.100 /  5.  4.100
+  libswresample   3.  4.100 /  3.  4.100
+  libpostproc    55.  4.100 / 55.  4.100
+Input #0, avi, from 'pipe:0':
+  Metadata:
+    encoder         : Lavf58.29.100
+  Duration: 00:00:00.02, start: 0.000000, bitrate: N/A
+    Stream #0:0: Video: rawvideo (GREY / 0x59455247), gray, 752x480, 60 fps, 60 tbr, 60 tbn, 60 tbc
+[NULL @ 000001dab4350200] Unable to find a suitable output format for 'pipe:1'
+pipe:1: Invalid argument
+
+Error processing frames: Error: ffmpeg exited with code 1: pipe:1: Invalid argument
+
+    at ChildProcess.<anonymous> (C:\Users\Research\Desktop\Corelink-nodejs\node_modules\fluent-ffmpeg\lib\processor.js:180:22)
+    at ChildProcess.emit (node:events:519:28)
+    at ChildProcess._handle.onexit (node:internal/child_process:294:12)
