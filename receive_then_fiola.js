@@ -706,10 +706,132 @@
 
 // run();
 
+// const corelink = require('corelink-client');
+// const { spawn } = require('child_process');
+// const path = require('path');
+// const { PassThrough } = require('stream');
+
+// const config = {
+//   ControlPort: 20012,
+//   ControlIP: 'corelink.hpc.nyu.edu',
+//   autoReconnect: false,
+// };
+// const username = 'Testuser';
+// const password = 'Testpassword';
+// const workspace = 'Fenton';
+// const protocol = 'ws';
+// const datatype = 'distance';
+
+// const fileParts = {};
+// let allFrames = [];
+// let frameCounter = 0;
+
+// const run = async () => {
+//   if (await corelink.connect({ username, password }, config).catch((err) => { console.log(err) })) {
+//     const receiver = await corelink.createReceiver({
+//       workspace,
+//       protocol,
+//       type: datatype,
+//       echo: true,
+//       alert: true,
+//     }).catch((err) => { console.log(err) });
+
+//     corelink.on('receiver', async (data) => {
+//       const options = { streamIDs: [data.streamID] };
+//       await corelink.subscribe(options);
+//       console.log('Receiver and sender connected, subscribing to data.');
+//     });
+
+//     corelink.on('data', (streamID, data) => {
+//       if (data.toString() === 'FINISHED') {
+//         console.log('Received FINISHED marker.');
+//         processFramesAndGenerateTiff();
+//       } else {
+//         try {
+//           const frameNumber = (data.readUInt8(0) << 8) | data.readUInt8(1); // Combine two bytes to get the frame number
+//           const sliceIndex = data[2];
+//           const totalSlices = data[3];
+//           const content = data.slice(4);
+//           console.log(`Frame number ${frameNumber} and slice number ${sliceIndex}`);
+          
+//           if (!fileParts[frameNumber]) {
+//             fileParts[frameNumber] = new Array(totalSlices).fill(null);
+//           }
+
+//           fileParts[frameNumber][sliceIndex] = content;
+
+//           // Check if all parts are received
+//           if (fileParts[frameNumber].every(part => part !== null)) {
+//             const fullFile = Buffer.concat(fileParts[frameNumber]);
+//             console.log(`Frame ${frameNumber} reassembled.`);
+
+//             // Store the reassembled frame
+//             allFrames.push(fullFile);
+//             frameCounter++;
+
+//             // Process the frame immediately after reassembling
+//             processFrame(fullFile, frameNumber);
+//           }
+//         } catch (error) {
+//           console.error(`Error processing frame ${frameNumber}:`, error);
+//           // Discard the current frame if any error occurs
+//           delete fileParts[frameNumber];
+//         }
+//       }
+//     });
+//   }
+// };
+
+// const processFrame = (frame, frameNumber) => {
+//   console.log(`Processing frame ${frameNumber}`);
+//   // You can add specific frame processing logic here if needed
+// };
+
+// const processFramesAndGenerateTiff = async () => {
+//   try {
+//     const tiffPath = path.join(__dirname, 'constructed_image.tiff');
+//     await sendBufferToPython(Buffer.concat(allFrames), tiffPath);
+//     console.log(`TIFF image saved at ${tiffPath}`);
+//   } catch (error) {
+//     console.error('Error processing frames:', error);
+//   }
+// };
+
+// const sendBufferToPython = (buffer, tiffPath) => {
+//   return new Promise((resolve, reject) => {
+//     const pythonProcess = spawn('python', ['convert_avi_to_tiff.py', tiffPath]);
+
+//     pythonProcess.stdout.on('data', (data) => {
+//       console.log(`Python output: ${data}`);
+//     });
+
+//     pythonProcess.stderr.on('data', (data) => {
+//       console.error(`Python error: ${data}`);
+//     });
+
+//     pythonProcess.on('close', (code) => {
+//       console.log(`Python script finished with code ${code}`);
+//       if (code === 0) {
+//         resolve();
+//       } else {
+//         reject(new Error(`Python script exited with code ${code}`));
+//       }
+//     });
+
+//     // Stream the buffer to the Python script
+//     const stream = new PassThrough();
+//     stream.end(buffer);
+//     stream.pipe(pythonProcess.stdin);
+//   });
+// };
+
+// run();
+
 const corelink = require('corelink-client');
 const { spawn } = require('child_process');
 const path = require('path');
 const { PassThrough } = require('stream');
+const fs = require('fs');
 
 const config = {
   ControlPort: 20012,
@@ -725,6 +847,8 @@ const datatype = 'distance';
 const fileParts = {};
 let allFrames = [];
 let frameCounter = 0;
+let tiffCounter = 0;
+const framesPerTiff = 500;
 
 const run = async () => {
   if (await corelink.connect({ username, password }, config).catch((err) => { console.log(err) })) {
@@ -745,7 +869,7 @@ const run = async () => {
     corelink.on('data', (streamID, data) => {
       if (data.toString() === 'FINISHED') {
         console.log('Received FINISHED marker.');
-        processFramesAndGenerateTiff();
+        processRemainingFrames().then(() => combineTiffs(tiffCounter)); // Process any remaining frames, then combine TIFFs
       } else {
         try {
           const frameNumber = (data.readUInt8(0) << 8) | data.readUInt8(1); // Combine two bytes to get the frame number
@@ -771,6 +895,15 @@ const run = async () => {
 
             // Process the frame immediately after reassembling
             processFrame(fullFile, frameNumber);
+
+            // Every 500 frames, create a TIFF
+            if (frameCounter % framesPerTiff === 0) {
+              const tiffPath = path.join(__dirname, `constructed_image_${tiffCounter}.tiff`);
+              processFramesAndGenerateTiff(tiffPath).then(() => {
+                tiffCounter++;
+                allFrames = []; // Reset for the next set of frames
+              });
+            }
           }
         } catch (error) {
           console.error(`Error processing frame ${frameNumber}:`, error);
@@ -787,19 +920,18 @@ const processFrame = (frame, frameNumber) => {
   // You can add specific frame processing logic here if needed
 };
 
-const processFramesAndGenerateTiff = async () => {
+const processFramesAndGenerateTiff = async (tiffPath) => {
   try {
-    const tiffPath = path.join(__dirname, 'constructed_image.tiff');
-    await sendBufferToPython(Buffer.concat(allFrames), tiffPath);
+    await sendBufferToPython(Buffer.concat(allFrames), tiffPath, 'generate');
     console.log(`TIFF image saved at ${tiffPath}`);
   } catch (error) {
     console.error('Error processing frames:', error);
   }
 };
 
-const sendBufferToPython = (buffer, tiffPath) => {
+const sendBufferToPython = (buffer, tiffPath, mode, extraData = '') => {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python', ['convert_avi_to_tiff.py', tiffPath]);
+    const pythonProcess = spawn('python', ['convert_avi_to_tiff.py', tiffPath, mode, extraData]);
 
     pythonProcess.stdout.on('data', (data) => {
       console.log(`Python output: ${data}`);
@@ -818,12 +950,34 @@ const sendBufferToPython = (buffer, tiffPath) => {
       }
     });
 
-    // Stream the buffer to the Python script
-    const stream = new PassThrough();
-    stream.end(buffer);
-    stream.pipe(pythonProcess.stdin);
+    if (mode === 'generate') {
+      // Stream the buffer to the Python script if generating TIFFs
+      const stream = new PassThrough();
+      stream.end(buffer);
+      stream.pipe(pythonProcess.stdin);
+    }
   });
 };
 
-run();
+const processRemainingFrames = async () => {
+  if (allFrames.length > 0) {
+    const tiffPath = path.join(__dirname, `constructed_image_${tiffCounter}.tiff`);
+    await processFramesAndGenerateTiff(tiffPath);
+    tiffCounter++;
+    allFrames = []; // Reset for the next set of frames
+  }
+  console.log('Finished remaining frames, trying to combine.');
+};
 
+const combineTiffs = async (tiffCount) => {
+  console.log(`Started combining, total tiffPath ${tiffCount}`);
+  try {
+    const combinedTiffPath = path.join(__dirname, 'final_combined_image.tiff');
+    await sendBufferToPython(Buffer.from(tiffCount.toString()), combinedTiffPath, 'combine');
+    console.log(`Combined TIFF image saved at ${combinedTiffPath}`);
+  } catch (error) {
+    console.error('Error combining TIFF files:', error);
+  }
+};
+
+run();
