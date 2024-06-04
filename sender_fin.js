@@ -284,9 +284,7 @@ async function sendFile(filePath) {
         corelink.send(sender, dataToSend);
         console.log('Chunk sent:', i, 'of frame', currentFrameNumber);
       }
-      if (i % 90 == 0){
-        await sleep(10); // Introduce a small delay between chunks to allow real-time processing
-      }
+      
     }
     resolve(); // Resolve the promise once all chunks are sent
   });
@@ -304,6 +302,9 @@ const startSendingFiles = async () => {
   for (let i = 0; i < 1300; i++) {
     await sendFile(`./${i}.avi`); // Await here to wait for each sendFile to complete
     currentFrameNumber++;
+    if (i % 90 == 0){
+      await sleep(10); // Introduce a small delay between chunks to allow real-time processing
+    }
   }
   await sendEndMessage(); // Send end message after all files are sent
 };
