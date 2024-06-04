@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "corelink-client": "^5.1.4"
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "chokidar": "^3.6.0",
+    "corelink-client": "^5.1.4",
+    "fluent-ffmpeg": "^2.1.3",
+    "sharp": "^0.33.4"
   }
 }
