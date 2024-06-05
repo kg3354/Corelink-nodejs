@@ -27,7 +27,7 @@ RUN npm install corelink-client
 # Copy the current directory contents into the container at /usr/src/app
 COPY fiola_pipeline.py .
 COPY image_process.py .
-COPY receiver_fin.js .
+COPY receive_then_fiola.js .
 COPY requirements.txt .
 
 # Install any needed packages specified in requirements.txt
