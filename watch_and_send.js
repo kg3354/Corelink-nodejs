@@ -21,16 +21,19 @@ let receiverActive = false;
 let sender;
 let currentFrameNumber = 0;
 
-// Function to send a file in chunks
+
 async function sendFile(filePath) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const fileBuffer = fs.readFileSync(filePath);
     const totalChunks = Math.ceil(fileBuffer.length / CHUNK_SIZE);
 
     for (let i = 0; i < totalChunks; i++) {
       const chunk = fileBuffer.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const frameNumberBuffer = Buffer.alloc(2);
+      frameNumberBuffer.writeUInt8(currentFrameNumber >> 8, 0); // First byte
+      frameNumberBuffer.writeUInt8(currentFrameNumber & 0xFF, 1); // Second byte
       const dataToSend = Buffer.concat([
-        Buffer.alloc(4, currentFrameNumber), // Use 4 bytes to encode the frame number
+        frameNumberBuffer, // Frame number (2 bytes)
         Buffer.from([i, totalChunks]), // Current chunk index and total chunks
         chunk,
       ]);
@@ -38,6 +41,7 @@ async function sendFile(filePath) {
         corelink.send(sender, dataToSend);
         console.log('Chunk sent:', i, 'of frame', currentFrameNumber);
       }
+      
     }
     resolve(); // Resolve the promise once all chunks are sent
   });
@@ -77,7 +81,7 @@ const run = async () => {
       persistent: true,
       ignoreInitial: true,
       followSymlinks: false,
-      depth: 0,
+      depth: 3,
       awaitWriteFinish: {
         stabilityThreshold: 2000,
         pollInterval: 100,
