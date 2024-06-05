@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y curl && \
     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
     apt-get install -y git && \
+    apt-get install -y libsm6 libxext6 libgl1-mesa-glx && \
     pip install --upgrade pip && \
     pip install --upgrade setuptools six && \
-    apt-get install  libsm6 libxext6 -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
