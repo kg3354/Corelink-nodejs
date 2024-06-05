@@ -20,7 +20,7 @@ corelink.debug = true;
 let receiverActive = false;
 let sender;
 let currentFrameNumber = 0;
-
+let inactiveTimeout;
 
 async function sendFile(filePath) {
   return new Promise(async (resolve, reject) => {
@@ -41,7 +41,6 @@ async function sendFile(filePath) {
         corelink.send(sender, dataToSend);
         console.log('Chunk sent:', i, 'of frame', currentFrameNumber);
       }
-      
     }
     resolve(); // Resolve the promise once all chunks are sent
   });
@@ -93,13 +92,19 @@ const run = async () => {
     watcher.on('add', async (filePath) => {
       if (path.extname(filePath).toLowerCase() === '.avi') {
         console.log(`New video file detected: ${filePath}`);
+        clearTimeout(inactiveTimeout); // Clear the previous timeout
+
         if (receiverActive) {
           await sendFile(filePath);
           currentFrameNumber++;
-          await sendEndMessage(); // Send end message after each file is sent
         } else {
           console.log('Receiver not active. Skipping file:', filePath);
         }
+
+        // Set a new timeout to send the end message if no new file is detected within 1 second
+        inactiveTimeout = setTimeout(async () => {
+          await sendEndMessage();
+        }, 1000);
       }
     });
 
