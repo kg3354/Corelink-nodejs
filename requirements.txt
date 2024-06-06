@@ -1,5 +1,5 @@
-tifffile
+tifftools
 imageio
 numpy
 imageio-ffmpeg
-opencv-python-headless
+opencv-python-headless  
