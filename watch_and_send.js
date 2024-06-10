@@ -40,7 +40,7 @@ async function sendFile(filePath) {
       if (receiverActive) {
         corelink.send(sender, dataToSend);
         console.log('Chunk sent:', i, 'of frame', currentFrameNumber);
-      }
+      } // Todo, check if receiver is still active during the send
     }
     resolve(); // Resolve the promise once all chunks are sent
   });
@@ -89,6 +89,7 @@ const run = async () => {
     });
 
     // Event listener for new files
+    // To do: add a timer to track from capture -> send, log it
     watcher.on('add', async (filePath) => {
       if (path.extname(filePath).toLowerCase() === '.avi') {
         console.log(`New video file detected: ${filePath}`);

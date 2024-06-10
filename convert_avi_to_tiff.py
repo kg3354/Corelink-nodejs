@@ -95,6 +95,7 @@ import numpy as np
 from io import BytesIO
 import tifftools
 import json
+import fiola_pipeline
 
 def convert_avi_to_tiff(input_buffer, output_path):
     try:
