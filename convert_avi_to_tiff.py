@@ -53,7 +53,7 @@ def combine_tiffs(input_paths, output_path):
         tifftools.write_tiff(tiff, output_path)
         print(f"Combined TIFF image saved at {output_path}")
         
-        #fiola_pipeline.run_pipeline(output_path)
+        fiola_pipeline.run_pipeline(output_path)
     except Exception as e:
         print(f"Error combining TIFF files: {e}", file=sys.stderr)
         sys.exit(1)
